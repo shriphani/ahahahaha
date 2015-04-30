@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------
--- This script demonstrates how to load the Face Detector 
+-- This script demonstrates how to load the Face Detector
 -- training data, and pre-process it to facilitate learning.
 --
 -- It's a good idea to run this script with the interactive mode:
@@ -24,7 +24,7 @@ local opt = opt or {
 ----------------------------------------------------------------------
 print(sys.COLORS.red ..  '==> downloading dataset')
 
--- Here we download dataset files. 
+-- Here we download dataset files.
 
 -- Note: files were converted from their original Matlab format
 -- to Torch's internal format using the mattorch package. The
@@ -65,12 +65,12 @@ classes = {'face','backg'}
 
 -- load backgrounds:
 for f=0,28033 do
-  imagesAll[f+1] = image.load('face-dataset/bg/bg_'..f..'.png') 
+  imagesAll[f+1] = image.load('face-dataset/bg/bg_'..f..'.png')
   labelsAll[f+1] = 2 -- 2 = background
 end
 -- load faces:
 for f=28034,41266 do
-  imagesAll[f+1] = image.load('face-dataset/face/face_'..f..'.png') 
+  imagesAll[f+1] = image.load('face-dataset/face/face_'..f..'.png')
   labelsAll[f+1] = 1 -- 1 = face
 end
 
@@ -79,7 +79,7 @@ local labelsShuffle = torch.randperm((#labelsAll)[1])
 
 local portionTrain = 0.8 -- 80% is train data, rest is test data
 local trsize = torch.floor(labelsShuffle:size(1)*portionTrain)
-local tesize = labelsShuffle:size(1) - trsize
+local tesize = 2
 
 -- create train set:
 trainData = {
@@ -89,19 +89,31 @@ trainData = {
 }
 --create test set:
 testData = {
+      data = torch.Tensor(tesize, 3, 32, 32),
+      labels = torch.Tensor(tesize),
+      size = function() return tesize end
+   }
+
+yuvTestData = {
       data = torch.Tensor(tesize, 1, 32, 32),
       labels = torch.Tensor(tesize),
       size = function() return tesize end
    }
 
+
 for i=1,trsize do
    trainData.data[i] = imagesAll[labelsShuffle[i]][1]:clone()
    trainData.labels[i] = labelsAll[labelsShuffle[i]]
 end
-for i=trsize+1,tesize+trsize do
-   testData.data[i-trsize] = imagesAll[labelsShuffle[i]][1]:clone()
-   testData.labels[i-trsize] = labelsAll[labelsShuffle[i]]
-end
+-- for i=trsize+1,tesize+trsize do
+--    testData.data[i-trsize] = imagesAll[labelsShuffle[i]][1]:clone()
+--    testData.labels[i-trsize] = labelsAll[labelsShuffle[i]]
+-- end
+
+testData.data[1] = image.load('sp_face.jpg'):clone()
+testData.labels[1] = 1
+testData.data[2] = image.load('sp_bg.jpg'):clone()
+testData.labels[2] = 2
 
 -- remove from memory temp image files:
 -- imagesAll = nil
@@ -113,8 +125,8 @@ print(sys.COLORS.red ..  '==> preprocessing data')
 -- faces and bg are already YUV here, no need to convert!
 
 -- Preprocessing requires a floating point representation (the original
--- data is stored on bytes). Types can be easily converted in Torch, 
--- in general by doing: dst = src:type('torch.TypeTensor'), 
+-- data is stored on bytes). Types can be easily converted in Torch,
+-- in general by doing: dst = src:type('torch.TypeTensor'),
 -- where Type=='Float','Double','Byte','Int',... Shortcuts are provided
 -- for simplicity (float(),double(),cuda(),...):
 
@@ -139,9 +151,11 @@ print(sys.COLORS.red ..  '==> preprocessing data')
 -- for i = 1,trainData:size() do
 --    trainData.data[i] = image.rgb2yuv(trainData.data[i])
 -- end
--- for i = 1,testData:size() do
---    testData.data[i] = image.rgb2yuv(testData.data[i])
--- end
+for i = 1,testData:size() do
+    print(i)
+   testData.data[i] = image.rgb2yuv(testData.data[i]):clone()
+   yuvTestData.data[i] = testData.data[i][1]:clone()
+end
 
 -- Name channels for convenience
 local channels = {'y'}--,'u','v'}
@@ -174,7 +188,7 @@ print(sys.COLORS.red ..  '==> preprocessing data: normalize all three channels l
 -- Define the normalization neighborhood:
 local neighborhood = image.gaussian1D(5) -- 5 for face detector training
 
--- Define our local normalization operator (It is an actual nn module, 
+-- Define our local normalization operator (It is an actual nn module,
 -- which could be inserted into a trainable model):
 local normalization = nn.SpatialContrastiveNormalization(1, neighborhood, 1):float()
 
@@ -186,6 +200,10 @@ for c in ipairs(channels) do
    for i = 1,testData:size() do
       testData.data[{ i,{c},{},{} }] = normalization:forward(testData.data[{ i,{c},{},{} }])
    end
+   for i = 1,testData:size() do
+      yuvTestData.data[{ i,{c},{},{} }] = normalization:forward(yuvTestData.data[{ i,{c},{},{} }])
+   end
+
 end
 
 ----------------------------------------------------------------------
@@ -214,19 +232,23 @@ print(sys.COLORS.red ..  '==> visualizing data')
 -- Visualization is quite easy, using image.display(). Check out:
 -- help(image.display), for more info about options.
 
-if opt.visualize then
-   local first256Samples_y = trainData.data[{ {1,256},1 }]
-   image.display{image=first256Samples_y, nrow=16, legend='Some training examples: Y channel'}
-   local first256Samples_y = testData.data[{ {1,256},1 }]
-   image.display{image=first256Samples_y, nrow=16, legend='Some testing examples: Y channel'}
-end
+-- if opt.visualize then
+--    local first256Samples_y = trainData.data[{ {1,256},1 }]
+--    image.display{image=first256Samples_y, nrow=16, legend='Some training examples: Y channel'}
+--    local first256Samples_y = testData.data[{ {1,256},1 }]
+--    image.display{image=first256Samples_y, nrow=16, legend='Some testing examples: Y channel'}
+-- end
+
+-- yuvTestData[1][1] = testData.data[1][1]
+-- yuvTestData[2][1] = testData.data[2][1]
+yuvTestData.labels = testData.labels
 
 -- Exports
 return {
    trainData = trainData,
    testData = testData,
+   yuvTestData = yuvTestData,
    mean = mean,
    std = std,
    classes = classes
 }
-

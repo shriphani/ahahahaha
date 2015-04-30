@@ -73,10 +73,10 @@ local optimState = {
 
 ----------------------------------------------------------------------
 print(sys.COLORS.red ..  '==> allocating minibatch memory')
-local x = torch.Tensor(opt.batchSize,trainData.data:size(2), 
+local x = torch.Tensor(opt.batchSize,trainData.data:size(2),
          trainData.data:size(3), trainData.data:size(4)) --faces data
 local yt = torch.Tensor(opt.batchSize)
-if opt.type == 'cuda' then 
+if opt.type == 'cuda' then
    x = x:cuda()
    yt = yt:cuda()
 end
@@ -98,7 +98,7 @@ local function train(trainData)
    local shuffle = torch.randperm(trainData:size())
 
    -- do one epoch
-   print(sys.COLORS.green .. '==> doing epoch on training data:') 
+   print(sys.COLORS.green .. '==> doing epoch on training data:')
    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
    for t = 1,trainData:size(),opt.batchSize do
       -- disp progress
@@ -128,7 +128,7 @@ local function train(trainData)
          local E = loss:forward(y,yt)
 
          -- estimate df/dW
-         local dE_dy = loss:backward(y,yt)   
+         local dE_dy = loss:backward(y,yt)
          model:backward(x,dE_dy)
 
          -- update confusion
@@ -164,7 +164,7 @@ local function train(trainData)
    os.execute('mkdir -p ' .. sys.dirname(filename))
    print('==> saving model to '..filename)
    model1 = model:clone()
-   netLighter(model1)
+   -- netLighter(model1)
    torch.save(filename, model1)
 
    -- next epoch
@@ -174,4 +174,3 @@ end
 
 -- Export:
 return train
-

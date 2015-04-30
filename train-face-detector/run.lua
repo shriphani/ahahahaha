@@ -2,7 +2,7 @@
 -- Train a ConvNet on faces.
 --
 -- original: Clement Farabet
--- new version by: E. Culurciello 
+-- new version by: E. Culurciello
 -- Mon Oct 14 14:58:50 EDT 2013
 ----------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ opt = lapp[[
    -w,--weightDecay        (default 1e-5)        L2 penalty on the weights
    -m,--momentum           (default 0.1)         momentum
    -d,--dropout            (default 0.5)         dropout amount
-   -b,--batchSize          (default 128)         batch size
+   -b,--batchSize          (default 2)         batch size
    -t,--threads            (default 8)           number of threads
    -p,--type               (default float)       float or cuda
    -i,--devid              (default 1)           device ID (if using CUDA)
@@ -54,8 +54,7 @@ local test  = require 'test'
 ----------------------------------------------------------------------
 print(sys.COLORS.red .. '==> training!')
 
-while true do
-   train(data.trainData)
-   test(data.testData)
-end
-
+-- while true do
+   -- train(data.trainData)
+   test(data.yuvTestData)
+-- end
